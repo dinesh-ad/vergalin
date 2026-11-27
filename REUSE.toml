@@ -1,0 +1,13 @@
+version = 1
+
+# This repository's own files. The entries below it are later, so they take precedence for the files they name.
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2026 Dinesh Allimuthu"
+SPDX-License-Identifier = "LicenseRef-AllRightsReserved"
+
+# The suppressions check, copied byte for byte (tests/test_vendored.py).
+[[annotations]]
+path = "scripts/check-suppressions.sh"
+SPDX-FileCopyrightText = "2026 Vercroft contributors"
+SPDX-License-Identifier = "MIT"

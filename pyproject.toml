@@ -1,0 +1,90 @@
+[project]
+name = "vergalin"
+version = "0.0.0"
+description = "The checks of the vergalin.com site; nothing here is installed or shipped."
+license = "LicenseRef-AllRightsReserved"
+license-files = ["LICENSE"]
+# The feature release of .python-version; tests/test_python_version.py keeps them in step.
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy==2.4.1",
+    "pre-commit==4.7.0",
+    "pytest==9.2.0",
+    "reuse==6.3.0",
+    "ruff==0.17.5",
+    "zizmor==1.32.0",
+]
+
+[tool.ruff]
+line-length = 99  # PEP 8's maximum for a team that agrees on it
+# Byte for byte copies of another repository's files (tests/test_vendored.py), kept in its style.
+extend-exclude = [".github/scripts"]
+# target-version is read from [project] requires-python
+
+[tool.ruff.lint]
+select = [
+    "F", "E", "W",  # pyflakes, pycodestyle (E402 imports at top, E722 bare except)
+    "I",            # import sorting
+    "N",            # PEP 8 naming
+    "UP",           # current syntax for the minimum Python
+    "B",            # likely bugs (B904 raise from)
+    "SIM",          # simpler equivalents
+    "PTH",          # pathlib, not os.path
+    "RUF",          # ruff's own checks (RUF012 mutable class defaults)
+    "BLE",          # catch-all except only when logged or re-raised
+    "T20",          # no print
+    "LOG",          # logging misuse
+    "PGH",          # blanket suppressions
+    "TID",          # banned APIs, absolute imports
+    "ASYNC",        # blocking calls in async code
+    "PT",           # pytest style
+    "S",            # security (bandit)
+    "D",            # PEP 257 docstrings
+    "PLW0603",      # no global statement
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"os.path".msg = "Use pathlib."
+"sys.path".msg = "Install the project (uv sync); never edit sys.path."
+"threading.Thread".msg = "Use concurrent.futures or asyncio."
+"_thread".msg = "Use concurrent.futures or asyncio."
+"typing.no_type_check".msg = "Fix the types instead."
+
+[tool.ruff.lint.per-file-ignores]
+# Every entry says why. Tests assert (S101), and their names are their documentation (D). The gate
+# test runs the gate's own step with a fixed interpreter and no shell (S603).
+"tests/**" = ["S101", "D", "S603"]
+# The scripts are the hooks' command-line programs: their output is print.
+"scripts/**" = ["T201"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.14"  # the feature release of .python-version
+files = ["tests"]  # .github/scripts is a byte for byte copy, checked where it is maintained
+strict = true
+warn_unreachable = true
+enable_error_code = [
+    "deprecated", "exhaustive-match", "explicit-override", "ignore-without-code",
+    "mutable-override", "possibly-undefined", "redundant-expr", "truthy-bool",
+    "truthy-iterable", "unimported-reveal", "unused-awaitable",
+]
+
+[tool.pytest]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
+strict = true
+
+[tool.uv]
+exclude-newer = "7 days"
+no-build = true
