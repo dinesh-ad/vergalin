@@ -1,0 +1,132 @@
+/* System fonts only: every desktop and phone has one that renders Tamil. */
+:root {
+  color-scheme: light dark;
+  --paper: #faf7f1;
+  --ink: #1d2621;
+  --muted: #4b5a52;
+  --accent: #2c5a43;
+  --rule: #d9d2c4;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif Tamil", "Tamil Sangam MN", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Tamil", "Nirmala UI", "Tamil Sangam MN", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #131a16;
+    --ink: #e9e5dc;
+    --muted: #b3bdb5;
+    --accent: #8fc9a9;
+    --rule: #34403a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 1.0625rem/1.65 var(--sans);
+}
+
+main,
+footer {
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+main {
+  padding-top: 3.5rem;
+  padding-bottom: 2.5rem;
+}
+
+h1,
+h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.25rem, 8vw, 3.25rem);
+  letter-spacing: 0.01em;
+}
+
+h2 {
+  margin: 2.5rem 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.masthead {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.tamil {
+  margin: 0.25rem 0 0;
+  font-family: var(--serif);
+  font-size: 1.75rem;
+  color: var(--accent);
+}
+
+.meaning,
+.effective,
+.back {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.back {
+  margin-bottom: 1rem;
+}
+
+.lead {
+  font-size: 1.1875rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 0.14em;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+li + li {
+  margin-top: 0.35rem;
+}
+
+footer {
+  padding-top: 1.25rem;
+  padding-bottom: 2.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+footer nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+footer a[aria-current="page"] {
+  color: var(--muted);
+  text-decoration: none;
+}

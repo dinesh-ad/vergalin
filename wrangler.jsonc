@@ -1,0 +1,14 @@
+{
+  // Static files only: no script ("main"), so no request runs code.
+  // No account_id here: the deploy passes it from its protected environment.
+  "name": "vergalin",
+  "compatibility_date": "2026-11-01",
+  // The public address is only the custom domain the owner attaches once.
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./public",
+    // An unknown path gets public/404.html with status 404.
+    "not_found_handling": "404-page"
+  }
+}
