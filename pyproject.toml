@@ -10,6 +10,8 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+    "brotli==1.2.1",  # the WOFF2 compression fontTools uses (scripts/make-tamil-font.py)
+    "fonttools==4.68.0",
     "mypy==2.4.1",
     "pre-commit==4.7.0",
     "pytest==9.2.0",
@@ -79,6 +81,11 @@ enable_error_code = [
     "mutable-override", "possibly-undefined", "redundant-expr", "truthy-bool",
     "truthy-iterable", "unimported-reveal", "unused-awaitable",
 ]
+
+# fontTools ships no type marker; mypy reads its code instead of treating every import as missing.
+[[tool.mypy.overrides]]
+module = ["fontTools", "fontTools.*"]
+follow_untyped_imports = true
 
 [tool.pytest]
 testpaths = ["tests"]
