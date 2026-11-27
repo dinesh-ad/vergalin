@@ -1,7 +1,7 @@
 # A static site served as files only
 
 Date: 2026-11-27
-Status: accepted
+Status: accepted; its font line is superseded by [Ship a Tamil font subset](2026-11-27-ship-a-tamil-font-subset.md)
 
 ## Context
 
@@ -15,13 +15,10 @@ policy (§7D).
 
 We will serve `public/` as it is, as static files with no script:
 
-- Plain HTML and one stylesheet: no build step, no JavaScript, no cookie, and no web font but the Tamil subset below.
+- Plain HTML and one stylesheet: no build step, no JavaScript, no web font (system fonts render Tamil), no cookie.
 - The host's settings name no script, so no request runs code. An unknown path gets `public/404.html` with status 404.
 - `public/_headers` sets seven security headers on every path. Its content security policy starts from
-  `default-src 'none'` and allows only the site's own stylesheet, icon and font; `scripts/check-headers.py` keeps it
-  so.
-- A Tamil subset of Noto Sans Tamil (OFL-1.1) is shipped in `public/fonts/` so the name renders everywhere, even on a
-  device with no Tamil font; `scripts/make-tamil-font.py` makes it again from the recorded release.
+  `default-src 'none'` and allows only the site's own stylesheet and icon; `scripts/check-headers.py` keeps it so.
 - The preview tool is pinned in `deploy/` so the host's routing and headers can be seen locally before a merge. It is
   installed with pnpm 11 through corepack, which checks the sha512 in `packageManager`. The lockfile holds only versions
   at least 7 days old, and install scripts are refused unless listed.
