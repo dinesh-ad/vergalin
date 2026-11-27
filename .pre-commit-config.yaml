@@ -1,0 +1,115 @@
+# The checks of this repository. Every hook runs at commit, and CI's Repository checks job runs each hook that has the
+# manual stage on a clean checkout. The Python tools run at commit and in CI's Python job; the history scan runs at
+# push. Install them as CONTRIBUTING.md says. The hook scripts use only the standard library, and run through uv on
+# the Python that .python-version names.
+minimum_pre_commit_version: "4.4.0"
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit, manual]
+default_language_version:
+  golang: 1.27.3
+repos:
+  # gitleaks with this repository's config (.gitleaks.toml: addresses, phone numbers, emails and link hosts).
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # v8.30.1
+    hooks:
+      - id: gitleaks
+        args: [--config=.gitleaks.toml]
+        stages: [pre-commit]
+      # The hook's own entry scans only staged changes, which are empty at push, so the push scans the history of
+      # HEAD, the pushed branch (--log-opts=HEAD; without it gitleaks scans every local branch).
+      - id: gitleaks
+        alias: gitleaks-history
+        name: Detect hardcoded secrets in every commit
+        entry: gitleaks git --redact --verbose --log-opts=HEAD
+        args: [--config=.gitleaks.toml]
+        always_run: true
+        stages: [pre-push]
+  - repo: local
+    hooks:
+      # pygrep matches bytes: the UTF-8 of U+2013 and U+2014. A binary file can hold those bytes without a dash, so
+      # only text files are checked. The commit message is checked too.
+      - id: dashes
+        name: No em or en dashes (use a hyphen, a colon or a new sentence)
+        language: pygrep
+        entry: '\xe2\x80[\x93\x94]'
+        types: [text]
+        stages: [pre-commit, commit-msg, manual]
+      # zizmor from uv.lock, not from its own hook repository, whose python hook pre-commit would install without
+      # hashes.
+      - id: zizmor
+        name: zizmor
+        language: unsupported
+        entry: uv run --locked zizmor --offline .github/workflows
+        files: ^\.github/workflows/
+        pass_filenames: false
+      # Every file's copyright and licence, from REUSE.toml and LICENSES/. reuse needs libmagic.
+      - id: reuse
+        name: REUSE lint
+        language: unsupported
+        entry: uv run --locked reuse lint
+        pass_filenames: false
+        always_run: true
+      - id: suppressions
+        name: Suppressions are listed
+        language: unsupported
+        entry: sh scripts/check-suppressions.sh
+        pass_filenames: false
+        always_run: true
+      # The commit policy checker's own tests, as its source repository runs them (standard library unittest).
+      - id: commit-policy-tests
+        name: The commit policy checker's tests
+        language: unsupported
+        entry: uv run --locked python -B -m unittest discover --start-directory .github/scripts --pattern test_*.py
+        files: ^(\.github/scripts/|\.gitleaks\.toml$)
+        pass_filenames: false
+      # The seven security headers on every response, and a policy with no inline sources (tests/test_check_headers.py).
+      - id: headers
+        name: public/_headers sets the seven security headers on every path
+        language: unsupported
+        entry: uv run --locked python -B scripts/check-headers.py
+        files: ^(public/_headers|scripts/check-headers\.py)$
+        pass_filenames: false
+      # The links between this repository's files, as CI's Local links check runs them; lychee from PATH. At commit
+      # only: the CI runner has no lychee, and links.yml runs the action instead.
+      - id: lychee
+        name: Links between this repository's files (lychee, offline)
+        language: unsupported
+        entry: lychee --offline --no-progress
+        types: [markdown]
+        stages: [pre-commit]
+      # The Python tools, from uv.lock (CONTRIBUTING.md); at commit only.
+      - id: ruff-format
+        name: ruff format
+        language: unsupported
+        entry: uv run --locked ruff format --check
+        files: (\.py|pyproject\.toml)$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ruff
+        name: ruff check
+        language: unsupported
+        entry: uv run --locked ruff check
+        files: (\.py|pyproject\.toml)$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: mypy
+        name: mypy strict
+        language: unsupported
+        entry: uv run --locked mypy
+        files: (\.py|pyproject\.toml)$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: pytest
+        name: pytest
+        language: unsupported
+        entry: uv run --locked pytest -q
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: uv-lock
+        name: uv.lock matches pyproject.toml and holds only versions 7 days old
+        language: unsupported
+        entry: uv lock --check
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+        stages: [pre-commit]

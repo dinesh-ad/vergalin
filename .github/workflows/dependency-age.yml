@@ -1,0 +1,37 @@
+name: dependency-age
+
+# Fails when a pull request locks a package version younger than 7 days: the Python lockfile against pyproject.toml's
+# exclude-newer = "7 days", and every entry of deploy/pnpm-lock.yaml against deploy/pnpm-workspace.yaml's
+# minimumReleaseAge. GitHub Actions pins are covered by Dependabot's cooldown.
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  dependency-age:
+    name: dependency-age
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: false
+      - name: The Python lockfile holds only versions at least 7 days old
+        run: uv lock --check
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # corepack runs the pnpm that deploy/package.json names and checks its sha512; --lockfile-only checks every entry,
+      # transitive ones included, without installing.
+      - name: The deploy lockfile holds only versions at least 7 days old
+        working-directory: deploy
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: corepack pnpm install --frozen-lockfile --lockfile-only

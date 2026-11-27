@@ -1,0 +1,75 @@
+version: 2
+
+updates:
+  # The preview and upload tool in deploy/ (npm, pnpm and yarn all use the "npm" ecosystem). A new Node major is a
+  # planned change, not a monthly update.
+  - package-ecosystem: npm
+    directory: /deploy
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7 # must match pnpm minimumReleaseAge (10080 minutes)
+    groups:
+      npm-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 3
+
+  # The Python dev tools in uv.lock. A new Python feature release (3.14 to 3.15) is a planned change.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7 # must match uv exclude-newer = "7 days"
+    groups:
+      uv-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      uv-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    open-pull-requests-limit: 3
+
+  # The actions in .github/workflows, and the shared reusable secret scan they call, pinned by commit SHA with the
+  # version in a comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      github-actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+
+  # The pinned remote hooks in .pre-commit-config.yaml (local hooks have no rev).
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      pre-commit-minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 3
