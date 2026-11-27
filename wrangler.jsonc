@@ -6,6 +6,8 @@
   // The public address is only the custom domain, attached once by hand.
   "workers_dev": false,
   "preview_urls": false,
+  // No request logs, matching the privacy page: logging is on by default for a new Worker.
+  "observability": { "enabled": false },
   "assets": {
     "directory": "./public",
     // An unknown path gets public/404.html with status 404.
