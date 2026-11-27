@@ -1,0 +1,13 @@
+# Supply-chain settings, stated even where pnpm's default already matches.
+minimumReleaseAge: 10080        # 7 days, in minutes
+minimumReleaseAgeStrict: true   # fail rather than pick a too-new version
+trustPolicy: no-downgrade       # fail if a release lost the provenance its predecessors had
+blockExoticSubdeps: true        # only direct dependencies may come from git or tarball URLs
+strictDepBuilds: true           # an unreviewed install script fails the install
+savePrefix: ""                  # pnpm add writes exact versions
+allowBuilds:
+  # Each entry: true (runs) or false (skipped), with the reason.
+  # esbuild: its script downloads the platform binary only when the lockfile's platform package is missing
+  esbuild: false
+  # workerd: the same; pnpm installs its platform package from the lockfile, and the preview runs without the script
+  workerd: false
