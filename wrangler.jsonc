@@ -3,7 +3,7 @@
   // No account_id here: the deploy passes it from its protected environment.
   "name": "vergalin",
   "compatibility_date": "2026-11-01",
-  // The public address is only the custom domain, attached once by hand.
+  // The public addresses are only the custom domains, attached once by hand; www redirects to the bare domain.
   "workers_dev": false,
   "preview_urls": false,
   // No request logs, matching the privacy page: logging is on by default for a new Worker.
