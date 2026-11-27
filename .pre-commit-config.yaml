@@ -62,6 +62,13 @@ repos:
         entry: uv run --locked python -B -m unittest discover --start-directory .github/scripts --pattern test_*.py
         files: ^(\.github/scripts/|\.gitleaks\.toml$)
         pass_filenames: false
+      # The seven security headers on every response, and a policy with no inline sources (tests/test_check_headers.py).
+      - id: headers
+        name: public/_headers sets the seven security headers on every path
+        language: unsupported
+        entry: uv run --locked python -B scripts/check-headers.py
+        files: ^(public/_headers|scripts/check-headers\.py)$
+        pass_filenames: false
       # The links between this repository's files, as CI's Local links check runs them; lychee from PATH. At commit
       # only: the CI runner has no lychee, and links.yml runs the action instead.
       - id: lychee
