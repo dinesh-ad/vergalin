@@ -1,6 +1,1 @@
 Copyright (c) 2026 Dinesh Allimuthu. All rights reserved.
-
-This repository is published for reference only. No licence is granted to copy, modify, distribute or use the code,
-text or images, in whole or in part, without written permission.
-
-A few files copied from other projects keep their own licences: REUSE.toml lists them, and LICENSES/ holds the texts.
