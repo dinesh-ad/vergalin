@@ -1,5 +1,6 @@
 """scripts/check-headers.py, run as the hook runs it, on the real file and on broken copies."""
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -57,10 +58,45 @@ def test_unsafe_inline_fails(tmp_path: Path, source: str) -> None:
     assert (code, "allows 'unsafe-inline'" in output) == (1, True)
 
 
-def test_a_policy_without_default_src_none_fails(tmp_path: Path) -> None:
-    text = HEADERS.read_text().replace("default-src 'none'", "default-src 'self'")
-    code, output = check(variant(tmp_path, text))
-    assert (code, "default-src 'none'" in output) == (1, True)
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("default-src 'none'", "default-src 'self'", "has default-src 'self', expected 'none'"),
+        ("font-src 'self'; ", "", "has font-src (none), expected 'self'"),
+        ("img-src 'self'", "img-src 'self' data:", "has img-src 'self' data:, expected 'self'"),
+        (
+            "base-uri 'none'",
+            "base-uri 'none'; connect-src *",
+            "has connect-src *, expected (none)",
+        ),
+    ],
+)
+def test_a_policy_other_than_the_expected_one_fails(
+    tmp_path: Path, old: str, new: str, message: str
+) -> None:
+    text = HEADERS.read_text()
+    assert text.count(old) == 1
+    code, output = check(variant(tmp_path, text.replace(old, new)))
+    assert (code, message in output) == (1, True)
+
+
+def test_the_policy_may_list_its_directives_in_another_order(tmp_path: Path) -> None:
+    text = HEADERS.read_text().replace(
+        "default-src 'none'; style-src 'self';", "style-src  'self' ;default-src 'none';"
+    )
+    assert check(variant(tmp_path, text))[0] == 0
+
+
+@pytest.mark.parametrize(
+    "cache", ["public, max-age=3600", "no-store", None], ids=["short", "no-store", "missing"]
+)
+def test_the_font_block_must_cache_for_a_year(tmp_path: Path, cache: str | None) -> None:
+    line = "  Cache-Control: public, max-age=31536000, immutable\n"
+    text = HEADERS.read_text()
+    assert text.count(line) == 1
+    replacement = "" if cache is None else f"  Cache-Control: {cache}\n"
+    code, output = check(variant(tmp_path, text.replace(line, replacement)))
+    assert (code, "/fonts/* must set Cache-Control" in output) == (1, True)
 
 
 @pytest.mark.parametrize("bad", ["*/", "X-Frame-Options: DENY", "  not a header"])
@@ -70,5 +106,6 @@ def test_a_malformed_line_fails(tmp_path: Path, bad: str) -> None:
 
 
 def test_headers_on_another_path_only_fail(tmp_path: Path) -> None:
-    code, output = check(variant(tmp_path, HEADERS.read_text().replace("/*\n", "/privacy\n")))
+    text = re.sub(r"^/\*$", "/privacy", HEADERS.read_text(), flags=re.MULTILINE)
+    code, output = check(variant(tmp_path, text))
     assert (code, "no /* block" in output) == (1, True)

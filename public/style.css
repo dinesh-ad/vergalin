@@ -1,4 +1,15 @@
-/* System fonts only: every desktop and phone has one that renders Tamil. */
+/* System fonts, plus a Tamil subset shipped with the site for devices that have no Tamil font. The browser fetches it
+   only for Tamil characters (unicode-range); never local(), which lets a page probe installed fonts; never preloaded,
+   since a preload ignores unicode-range. */
+@font-face {
+  font-family: "Vergalin Tamil";
+  src: url("/fonts/noto-sans-tamil-v2.004-tamil.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF, U+200C-200D;
+}
+
 :root {
   color-scheme: light dark;
   --paper: #faf7f1;
@@ -75,7 +86,7 @@ h2 {
 
 .tamil {
   margin: 0.25rem 0 0;
-  font-family: var(--serif);
+  font-family: "Vergalin Tamil", var(--serif);
   font-size: 1.75rem;
   color: var(--accent);
 }

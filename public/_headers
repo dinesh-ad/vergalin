@@ -1,5 +1,5 @@
-# Every response. The site has no scripts, so the policy starts from nothing and allows only its own stylesheet and
-# icon. Checked by scripts/check-headers.py.
+# Every response. The site has no scripts, so the policy starts from nothing and allows only its own stylesheet, icon
+# and font. Checked by scripts/check-headers.py.
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
@@ -7,4 +7,7 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Cross-Origin-Opener-Policy: same-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+# The font's file name carries its release version, so a new font gets a new address and this copy never changes.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
