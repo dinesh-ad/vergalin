@@ -1,7 +1,7 @@
 # A static site served as files only
 
 Date: 2026-11-27
-Status: accepted
+Status: accepted; its font line is superseded by [Ship a Tamil font subset](2026-11-27-ship-a-tamil-font-subset.md)
 
 ## Context
 
