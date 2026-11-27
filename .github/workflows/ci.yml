@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Runs every hook in .pre-commit-config.yaml that has the manual stage; a new small check is a new hook there. A
+  # check that reads the pull request, not the files, is a step after the hooks. The tools come from uv.lock.
+  repository-checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The commit policy reads every commit of the pull request.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: false
+      - name: Install libmagic, which reuse needs and the runner image does not list
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libmagic1t64
+      # gitleaks scans staged changes, and CI has none; the Secret scan check scans the full history.
+      - name: Run every hook
+        env:
+          SKIP: gitleaks
+        run: uv run --locked pre-commit run --all-files --hook-stage manual --show-diff-on-failure
+      # The approved people are listed in the repository variable ALLOWED_COMMIT_IDENTITIES.
+      - name: Check the commits, the title and the description
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          ALLOWED_COMMIT_IDENTITIES: ${{ vars.ALLOWED_COMMIT_IDENTITIES }}
+        run: uv run --locked python -B .github/scripts/commit_policy.py
+
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: false
+      # uv installs the Python that .python-version names.
+      - name: Install
+        run: uv sync --locked
+      - name: Format
+        run: uv run --locked ruff format --check
+      - name: Lint
+        run: uv run --locked ruff check
+      - name: Types
+        run: uv run --locked mypy
+      - name: Tests
+        run: uv run --locked pytest
+
+  # The one CI check that decides for this file. `if: always()` so a failed job cannot skip it; it fails unless every
+  # job it needs passed or was skipped. tests/test_gate_summary.py fails when a job in this file is missing from
+  # `needs`, when the verdict accepts a failure, or when another job gets an `if:`.
+  gate-summary:
+    name: Gate summary
+    if: always()
+    needs: [repository-checks, python]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every needed job to have passed or been skipped
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          results = {job: need["result"] for job, need in json.loads(os.environ["NEEDS_JSON"]).items()}
+          for job, result in sorted(results.items()):
+              print(f"{job}: {result}")
+          bad = sorted(f"{job}={result}" for job, result in results.items() if result not in ("success", "skipped"))
+          if not results or bad:
+              sys.exit("not every needed job passed or was skipped: " + (", ".join(bad) or "no jobs"))
+          PY
