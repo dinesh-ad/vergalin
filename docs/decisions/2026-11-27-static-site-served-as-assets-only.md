@@ -5,7 +5,7 @@ Status: accepted
 
 ## Context
 
-Google's app branding needs a home page and a privacy policy on a domain the owner has verified before the family's
+Google's app branding needs a home page and a privacy policy on a domain we have verified before the family's
 backup tool can be published. vergalin.com is the family's long-term domain. Today it needs three pages that never
 change between visitors: home, privacy and a 404 page. engineering-practices asks for static sites served as files
 only, so requests are not billed (§1.1), and for web pages with no third-party requests and a strict content security

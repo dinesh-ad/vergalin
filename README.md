@@ -18,7 +18,7 @@ private backup tool. Live at [vergalin.com](https://vergalin.com) from the first
 ```mermaid
 flowchart LR
   PR[Pull request] --> CK["Checks: hooks, Python, secret scan,<br/>links, dependency age, CodeQL"]
-  CK --> OM[Owner approves and merges]
+  CK --> OM[Maintainer approves and merges]
   OM --> DP["Deploy from a protected<br/>environment (coming next)"]
   DP --> SH[Static host, files only]
   SH --> LIVE["vergalin.com<br/>/ · /privacy"]
