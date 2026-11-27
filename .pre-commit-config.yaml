@@ -55,6 +55,13 @@ repos:
         entry: sh scripts/check-suppressions.sh
         pass_filenames: false
         always_run: true
+      # The commit policy checker's own tests, as its source repository runs them (standard library unittest).
+      - id: commit-policy-tests
+        name: The commit policy checker's tests
+        language: unsupported
+        entry: uv run --locked python -B -m unittest discover --start-directory .github/scripts --pattern test_*.py
+        files: ^(\.github/scripts/|\.gitleaks\.toml$)
+        pass_filenames: false
       # The links between this repository's files, as CI's Local links check runs them; lychee from PATH. At commit
       # only: the CI runner has no lychee, and links.yml runs the action instead.
       - id: lychee
