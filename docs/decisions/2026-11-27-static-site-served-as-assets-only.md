@@ -25,8 +25,13 @@ We will serve `public/` as it is, as static files with no script:
 - pnpm 11, not 12: GitHub's own pages do not confirm that the dependency graph reads the two-document lockfile pnpm 12
   writes.
 
+The site must stay readable for decades. `public/` is complete on its own: plain HTML and CSS, with no build
+step. If the tools in `deploy/` or CI ever stop working, `public/` can be uploaded as it is to any static host, or
+opened in a browser. Those tools only preview, check and upload.
+
 ## Consequences
 
 - Nothing runs at request time, so there is no server code to patch and no request is billed.
 - A page that needs a script, a form or a third-party resource needs a new decision, because the policy refuses it.
-- pnpm 11 support ends 2027-04-30; `deploy/` moves to a supported pnpm before then.
+- pnpm 11 support ends 2027-04-30 (verified on endoflife.date/pnpm, 2026-11-27); `deploy/` moves to a supported
+  pnpm before then.

@@ -36,6 +36,8 @@ corepack pnpm install --frozen-lockfile
 corepack pnpm run preview   # http://localhost:8787
 ```
 
+The site is the `public/` folder: any static host can serve it as it is, without these tools.
+
 ## Links
 
 [Contributing](CONTRIBUTING.md) · [Reporting a vulnerability](SECURITY.md) · [Decisions](docs/decisions/)
