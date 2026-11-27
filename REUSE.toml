@@ -17,3 +17,9 @@ SPDX-License-Identifier = "FSL-1.1-MIT"
 path = "scripts/check-suppressions.sh"
 SPDX-FileCopyrightText = "2026 Vercroft contributors"
 SPDX-License-Identifier = "MIT"
+
+# The Tamil font subset, made from Noto Sans Tamil v2.004 by scripts/make-tamil-font.py.
+[[annotations]]
+path = "public/fonts/**"
+SPDX-FileCopyrightText = "2022 The Noto Project Authors"
+SPDX-License-Identifier = "OFL-1.1"

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Check public/_headers: its syntax, the seven security headers on every path, and the policy.
+"""Check public/_headers: its syntax, the seven headers on every path, the policy and the font.
 
 The host rejects the whole file when one line is malformed, so every non-empty line that does not
 start with "#" must be a path at column 0 (starting with "/" or "https://") or an indented
-"Name: value". The "/*" block must set each of the seven headers, and its Content-Security-Policy
-must start from default-src 'none' and never allow 'unsafe-inline'.
+"Name: value". The "/*" block must set each of the seven headers; its Content-Security-Policy
+must be exactly the expected policy, which starts from default-src 'none' and allows only the
+site's own stylesheet, icon and font. No line may allow 'unsafe-inline'. The "/fonts/*" block
+must let browsers keep the versioned font file for a year.
 
 Usage: check-headers.py [path]   (default: public/_headers)
 """
@@ -16,6 +18,7 @@ from typing import Final
 
 DEFAULT_FILE: Final = "public/_headers"
 EVERY_PATH: Final = "/*"
+FONTS: Final = "/fonts/*"
 REQUIRED: Final = (
     "X-Content-Type-Options",
     "X-Frame-Options",
@@ -25,8 +28,39 @@ REQUIRED: Final = (
     "Strict-Transport-Security",
     "Content-Security-Policy",
 )
+POLICY: Final = {
+    "default-src": "'none'",
+    "style-src": "'self'",
+    "img-src": "'self'",
+    "font-src": "'self'",
+    "base-uri": "'none'",
+    "form-action": "'none'",
+    "frame-ancestors": "'none'",
+}
+FONT_CACHE: Final = "public, max-age=31536000, immutable"
 PATH_RULE: Final = re.compile(r"^(/|https?://)\S*$")
 HEADER_RULE: Final = re.compile(r"^[ \t]+([!#$%&'*+.^_`|~0-9A-Za-z-]+):(.*\S)")
+
+
+def directives(policy: str) -> dict[str, str]:
+    """Split a policy into its directives, each with its sources joined by one space."""
+    found: dict[str, str] = {}
+    for part in policy.split(";"):
+        words = part.split()
+        if words:
+            found[words[0].lower()] = " ".join(words[1:])
+    return found
+
+
+def policy_problems(policy: str, name: str) -> list[str]:
+    """Return how the policy differs from the expected one, directive by directive."""
+    actual = directives(policy)
+    return [
+        f"{name}: the Content-Security-Policy has {directive} {actual.get(directive, '(none)')}"
+        f", expected {POLICY.get(directive, '(none)')}"
+        for directive in sorted(set(POLICY) | set(actual))
+        if actual.get(directive) != POLICY.get(directive)
+    ]
 
 
 def problems(text: str, name: str) -> list[str]:
@@ -50,16 +84,18 @@ def problems(text: str, name: str) -> list[str]:
             found.append(f"{name}:{number}: allows 'unsafe-inline'")
     every = blocks.get(EVERY_PATH)
     if every is None:
-        return [*found, f"{name}: no {EVERY_PATH} block, so some responses carry no header"]
-    found += [
-        f"{name}: {EVERY_PATH} does not set {header}"
-        for header in REQUIRED
-        if header.lower() not in every
-    ]
-    policy = every.get("content-security-policy", "")
-    directives = [part.strip().lower() for part in policy.split(";")]
-    if policy and "default-src 'none'" not in directives:
-        found.append(f"{name}: the Content-Security-Policy does not start from default-src 'none'")
+        found.append(f"{name}: no {EVERY_PATH} block, so some responses carry no header")
+    else:
+        found += [
+            f"{name}: {EVERY_PATH} does not set {header}"
+            for header in REQUIRED
+            if header.lower() not in every
+        ]
+        if "content-security-policy" in every:
+            found += policy_problems(every["content-security-policy"], name)
+    cache = blocks.get(FONTS, {}).get("cache-control")
+    if cache != FONT_CACHE:
+        found.append(f"{name}: {FONTS} must set Cache-Control: {FONT_CACHE}")
     return found
 
 
@@ -71,7 +107,10 @@ def main(argv: list[str]) -> int:
         print(line, file=sys.stderr)
     if found:
         return 1
-    print(f"{path}: every line is valid, and {EVERY_PATH} sets the {len(REQUIRED)} headers")
+    print(
+        f"{path}: every line is valid, {EVERY_PATH} sets the {len(REQUIRED)} headers and the"
+        f" expected policy, and {FONTS} is cached for a year"
+    )
     return 0
 
 
