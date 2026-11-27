@@ -19,6 +19,7 @@ From the repository root, unless the command starts with `cd deploy`.
 | Run one test | `uv run --locked pytest tests/test_check_headers.py::test_the_real_file_passes` |
 | Lint, format and types | `uv run --locked ruff check`, `uv run --locked ruff format --check`, `uv run --locked mypy` |
 | Check the headers | `uv run --locked python -B scripts/check-headers.py` |
+| Remake the Tamil font subset | `curl -fsSL -o /tmp/NotoSansTamil-v2.004.zip https://github.com/notofonts/tamil/releases/download/NotoSansTamil-v2.004/NotoSansTamil-v2.004.zip`, then `uv run --locked python -B scripts/make-tamil-font.py /tmp/NotoSansTamil-v2.004.zip` |
 | Check your commits | `BASE_SHA=$(git merge-base origin/main HEAD) HEAD_SHA=HEAD ALLOWED_COMMIT_IDENTITIES=<your noreply address> uv run --locked python -B .github/scripts/commit_policy.py` |
 | Install the preview tool | `cd deploy && corepack pnpm install --frozen-lockfile` |
 | Preview the site | `cd deploy && corepack pnpm run preview`, then open http://localhost:8787 |
@@ -35,10 +36,11 @@ CI runs on every pull request. The checks to pass are `Gate summary`, `Secret sc
 
 | Path | Holds |
 |---|---|
-| `public/` | The pages, `style.css`, the icon and `_headers`, served as they are |
+| `public/` | The pages, `style.css`, the icon, the Tamil font subset in `fonts/` and `_headers`, served as they are |
 | the `.jsonc` file at the root | The host's settings: files only, no script, the 404 page |
 | `deploy/` | The preview tool, pinned in `pnpm-lock.yaml`; the age and install-script rules in `pnpm-workspace.yaml` |
 | `scripts/check-headers.py` | The header check the `headers` hook runs |
+| `scripts/make-tamil-font.py` | Makes `public/fonts/` from the Noto Sans Tamil release; `tests/test_tamil_font.py` pins the result |
 | `scripts/check-suppressions.sh`, `.github/scripts/` | Copies of other projects' files (see Boundaries) |
 | `tests/` | The tests of the checks, the gate and the copies |
 | `.gitleaks.toml` | The leak rules; its last link allowlist holds the hosts this site links to |
@@ -47,7 +49,7 @@ CI runs on every pull request. The checks to pass are `Gate summary`, `Secret sc
 
 ## Boundaries
 
-- Never add a script, a web font, analytics, a cookie or a request to another site: `public/_headers` allows only the
+- Never add a script, another web font, analytics, a cookie or a request to another site: `public/_headers` allows only the
   site's own files.
 - Never name the host's product or its tool outside the host's settings file, `deploy/` and the deploy workflow; write "the
   host" and "the preview tool".
