@@ -8,9 +8,10 @@
 # Vergalin
 
 வேர்களின், "of the roots": the family's home on the web, and the privacy policy of Vergalin Backup, the family's
-private backup tool. Live at [vergalin.com](https://vergalin.com) from the first deploy.
+private backup tool. Live at [vergalin.com](https://vergalin.com).
 
 [![CI](https://github.com/dinesh-ad/vergalin/actions/workflows/ci.yml/badge.svg)](https://github.com/dinesh-ad/vergalin/actions/workflows/ci.yml)
+[![Deploy](https://github.com/dinesh-ad/vergalin/actions/workflows/deploy.yml/badge.svg)](https://github.com/dinesh-ad/vergalin/actions/workflows/deploy.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/dinesh-ad/vergalin/badge)](https://scorecard.dev/viewer/?uri=github.com/dinesh-ad/vergalin)
 
 ## How a change ships
@@ -19,12 +20,15 @@ private backup tool. Live at [vergalin.com](https://vergalin.com) from the first
 flowchart LR
   PR[Pull request] --> CK["Checks: hooks, Python, secret scan,<br/>links, dependency age, CodeQL"]
   CK --> OM[Maintainer approves and merges]
-  OM --> DP["Deploy from a protected<br/>environment (coming next)"]
+  OM --> BD["Build: checks and SBOM"]
+  BD --> AT["Attest: provenance and SBOM"]
+  AT --> DP["Deploy from a protected<br/>environment"]
   DP --> SH[Static host, files only]
   SH --> LIVE["vergalin.com<br/>/ · /privacy"]
 ```
 
-Why the site is files only: [the decision](docs/decisions/2026-11-27-static-site-served-as-assets-only.md).
+Why the site is files only: [the decision](docs/decisions/2026-11-27-static-site-served-as-assets-only.md); how it
+deploys: [the deploy decision](docs/decisions/2026-11-27-deploy-from-a-protected-environment.md).
 
 ## Quick start
 

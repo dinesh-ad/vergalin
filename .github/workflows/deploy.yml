@@ -1,0 +1,171 @@
+# Deploy public/ to vergalin.com on every push to main, from the protected "production" environment.
+#
+# Three jobs, so the job that runs the repository's code never holds the right to sign:
+# - build: the site's checks and an SPDX SBOM of public/, with no secret and no write permission;
+# - attest: build provenance and the SBOM attested on the files themselves, so any live file can be checked by its
+#   own sha256 (CONTRIBUTING.md);
+# - deploy: uploads exactly the attested files with wrangler, installed from deploy/pnpm-lock.yaml with install
+#   scripts blocked, not with Cloudflare's own action, which resolves the tool and its dependencies at run time.
+# download-artifact checks each artifact's digest itself and fails on a mismatch.
+# tests/test_deploy_workflow.py keeps the triggers, the secrets, the environment and the pins as they are here.
+#
+# Settings of the "production" environment (the owner sets them in GitHub):
+# - secret CLOUDFLARE_API_TOKEN: a token with the Editor role on the one Worker vergalin, expiring within a year;
+# - secret CLOUDFLARE_ACCOUNT_ID: the account id (a secret so logs mask it);
+# - deployment branches: main only; administrators cannot bypass.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # Redeploys main without a commit, for example after the token is renewed; a failed run can be re-run for 30 days only.
+  workflow_dispatch:
+
+permissions: {}
+
+# A running deploy is never cancelled; a newer run waits for it.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # syft, by version and the sha256 of its release tarball (GitHub's asset digest); updated by hand, as
+      # Dependabot does not read run lines.
+      SYFT_VERSION: "1.57.2"
+      SYFT_SHA256: ad92bd3ec1b94a3df01d4d0aec199afa9c42b72e86da436ff5f837914d32706b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.7"
+          enable-cache: false
+      - name: The site's checks
+        run: |
+          uv run --locked python -B scripts/check-headers.py
+          uv run --locked pytest tests/test_check_headers.py tests/test_tamil_font.py
+      - name: syft, checked against its sha256
+        run: |
+          case "$RUNNER_OS/$RUNNER_ARCH" in
+            Linux/X64) asset=linux_amd64 ;;
+            *) echo "::error::no checked syft archive for $RUNNER_OS/$RUNNER_ARCH"; exit 1 ;;
+          esac
+          archive="$RUNNER_TEMP/syft.tar.gz"
+          curl -fsSL --proto '=https' -o "$archive" \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_${asset}.tar.gz"
+          echo "$SYFT_SHA256  $archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" syft
+      # Plain files hold no packages, so syft lists every file with its sha256 instead (file metadata "all").
+      - name: SBOM of the deployed files
+        env:
+          SYFT_CHECK_FOR_APP_UPDATE: "false"
+          SYFT_FILE_METADATA_SELECTION: all
+          SYFT_FILE_METADATA_DIGESTS: sha256
+          SOURCE_VERSION: ${{ github.sha }}
+        run: |
+          mkdir sbom
+          "$RUNNER_TEMP/bin/syft" scan dir:public --source-name vergalin --source-version "$SOURCE_VERSION" \
+            -o spdx-json=sbom/sbom.spdx.json -q
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: public/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom/sbom.spdx.json
+          if-no-files-found: error
+          retention-days: 7
+
+  attest:
+    name: Attest site
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # the signing certificate
+      attestations: write # store the attestations
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site
+          path: public
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sbom
+          path: sbom
+      - name: Build provenance of every deployed file
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: "public/**"
+      - name: The SBOM, attested on the same files
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: "public/**"
+          sbom-path: sbom/sbom.spdx.json
+
+  deploy:
+    name: Deploy site
+    if: github.ref == 'refs/heads/main'
+    needs: [build, attest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://vergalin.com
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The checkout gives wrangler.jsonc, deploy/ and .nvmrc; the site itself is the attested artifact.
+      - name: Remove the checked-out site
+        run: rm -rf public
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site
+          path: public
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Check the secrets are set
+        env:
+          # Booleans only: the values never reach this step.
+          TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          ACCOUNT_SET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [ "$TOKEN_SET" != "true" ] || [ "$ACCOUNT_SET" != "true" ]; then
+            echo "The production environment needs secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+      # corepack runs the pnpm that deploy/package.json names and checks its sha512. Install scripts are blocked here
+      # and by deploy/pnpm-workspace.yaml.
+      - name: Install wrangler from the lockfile
+        working-directory: deploy
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+        run: corepack pnpm install --frozen-lockfile --ignore-scripts
+      - name: Deploy
+        working-directory: deploy
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+          WRANGLER_SEND_METRICS: "false"
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: corepack pnpm exec wrangler deploy --config ../wrangler.jsonc

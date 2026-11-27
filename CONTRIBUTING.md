@@ -32,13 +32,32 @@ CI runs on every pull request. The checks to pass are `Gate summary`, `Secret sc
 `dependency-age` and `Analyze (actions)`. The commit policy, inside `Repository checks`, reads the repository variable
 `ALLOWED_COMMIT_IDENTITIES`.
 
+A merge to main deploys `public/` through the Deploy workflow and the protected `production` environment; nothing is
+deployed by hand. Every deployed file carries build provenance and an SBOM attestation. To check a live file, with gh
+and cosign 2.4 or newer:
+
+```sh
+curl -fsSL -o page https://vergalin.com/privacy
+digest=$(sha256sum page | cut -d' ' -f1)
+for type in https://slsa.dev/provenance/v1 https://spdx.dev/Document/v2.3; do
+  gh api "repos/dinesh-ad/vergalin/attestations/sha256:$digest" \
+    --jq "[.attestations[].bundle | select(.dsseEnvelope.payload | @base64d | fromjson | .predicateType == \"$type\")][0]" \
+    > bundle.json
+  cosign verify-blob-attestation --new-bundle-format --bundle bundle.json \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity https://github.com/dinesh-ad/vergalin/.github/workflows/deploy.yml@refs/heads/main \
+    --type "$type" page
+done
+```
+
 ## Map
 
 | Path | Holds |
 |---|---|
 | `public/` | The pages, `style.css`, the icon, the Tamil font subset in `fonts/` and `_headers`, served as they are |
 | the `.jsonc` file at the root | The host's settings: files only, no script, the 404 page |
-| `deploy/` | The preview tool, pinned in `pnpm-lock.yaml`; the age and install-script rules in `pnpm-workspace.yaml` |
+| `deploy/` | The tool that previews and uploads the site, pinned in `pnpm-lock.yaml`; the age and install-script rules in `pnpm-workspace.yaml` |
+| `.github/workflows/deploy.yml` | The deploy: checks and SBOM, attestations, upload from `production`; `tests/test_deploy_workflow.py` keeps its triggers, secrets and pins |
 | `scripts/check-headers.py` | The header check the `headers` hook runs |
 | `scripts/make-tamil-font.py` | Makes `public/fonts/` from the Noto Sans Tamil release; `tests/test_tamil_font.py` pins the result |
 | `scripts/check-suppressions.sh`, `.github/scripts/` | Copies of other projects' files (see Boundaries) |
@@ -57,6 +76,8 @@ CI runs on every pull request. The checks to pass are `Gate summary`, `Secret sc
 - Never edit `.github/scripts/` or `scripts/check-suppressions.sh` by hand: copy the file again from its source and
   update its line in `tests/test_vendored.py`.
 - Never run pnpm other than as `corepack pnpm` in `deploy/`, and never `npx`.
+- Never add a pull-request trigger, or a secret outside the deploy job, to `.github/workflows/deploy.yml`
+  (`tests/test_deploy_workflow.py`); never deploy by hand.
 - A new outside link needs its host added to the last allowlist of `.gitleaks.toml` after review.
 - Secrets never go in git.
 
